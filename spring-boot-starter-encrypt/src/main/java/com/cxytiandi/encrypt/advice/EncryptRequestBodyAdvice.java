@@ -3,6 +3,7 @@ package com.cxytiandi.encrypt.advice;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
+import java.util.Base64;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -56,7 +57,7 @@ public class EncryptRequestBodyAdvice implements RequestBodyAdvice {
 			Class<? extends HttpMessageConverter<?>> converterType) throws IOException {
 		if(parameter.getMethod().isAnnotationPresent(Decrypt.class) && !encryptProperties.isDebug()){
 			try {
-				return new DecryptHttpInputMessage(inputMessage, encryptProperties.getKey(), encryptProperties.getCharset());
+				return new DecryptHttpInputMessage(inputMessage, encryptProperties.getKey(), encryptProperties.getCharset(), encryptProperties.isBase64());
 			} catch (Exception e) {
 				logger.error("数据解密失败", e);
 			}
@@ -76,10 +77,15 @@ class DecryptHttpInputMessage implements HttpInputMessage {
     private HttpHeaders headers;
     private InputStream body;
 
-    public DecryptHttpInputMessage(HttpInputMessage inputMessage, String key, String charset) throws Exception {
+    public DecryptHttpInputMessage(HttpInputMessage inputMessage, String key, String charset, boolean isBase64) throws Exception {
         this.headers = inputMessage.getHeaders();
         String content = IOUtils.toString(inputMessage.getBody(), charset);
-        long startTime = System.currentTimeMillis();
+
+		if (isBase64) {
+			content = IOUtils.toString(Base64.getDecoder().decode(content), charset);
+		}
+
+		long startTime = System.currentTimeMillis();
         // JSON 数据格式的不进行解密操作
         String decryptBody = "";
         if (content.startsWith("{")) {
